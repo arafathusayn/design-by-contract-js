@@ -1,0 +1,34 @@
+{
+  "name": "design-by-contract",
+  "version": "0.0.1",
+  "description": "apply 'design by contract' methodology to your javascript code",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --declaration && npm run build:browser",
+    "build:browser": "browserify -s designByContract src/index.ts -p [ tsify ] > dist/design-by-contract.js && terser --compress --mangle -o dist/design-by-contract.min.js dist/design-by-contract.js",
+    "test": "jest --config jestconfig.json --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/arafathusayn/design-by-contract-js.git"
+  },
+  "keywords": [
+    "design-by-contract"
+  ],
+  "author": "Arafat Husayn <hello@arafat.dev>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/arafathusayn/design-by-contract-js/issues"
+  },
+  "homepage": "https://github.com/arafathusayn/design-by-contract-js#readme",
+  "devDependencies": {
+    "@types/jest": "^26.0.0",
+    "browserify": "^16.5.1",
+    "jest": "^26.0.1",
+    "terser": "^4.8.0",
+    "ts-jest": "^26.1.1",
+    "tsify": "^4.0.2",
+    "typescript": "^3.9.5"
+  }
+}
