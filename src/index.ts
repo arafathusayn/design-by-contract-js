@@ -1,4 +1,4 @@
-type Condition = [() => boolean, { [key: string]: any }, any?];
+type Condition = [() => boolean, any?];
 
 const checkContracts = (
   conditions: Condition[],
@@ -7,15 +7,12 @@ const checkContracts = (
   let results: (true | Error)[] = [];
 
   for (const condition of conditions) {
-    const fn: (x: any) => boolean = condition[0];
-    const args: any = condition[1];
-
-    const result: boolean = fn(args);
+    const result: boolean = condition[0]();
 
     if (result === true) {
       results.push(true);
     } else {
-      results.push(new Error(condition[2] || defaultErrorMessage));
+      results.push(new Error(condition[1] || defaultErrorMessage));
 
       return results;
     }
@@ -52,12 +49,11 @@ const checkPostconditions = (conditions: Condition[]) =>
   );
 
 /**
- * @description Condition: [ConditionFunction, Arguments, ErrorMessage?]
+ * @description Condition: [ConditionFunction, ErrorMessage?]
  * @description ConditionFunction: () => boolean - evaluated and checked to be true, e.g. `() => x === "foo" && y === "bar"`
- * @description Arguments: Object - its keys and values will be passed for evaluation, e.g. `{ x: "foo", y: "bar" }`
  * @description ErrorMessage?: any - optional, e.g. `'x should not be anything other than "foo"'`
  */
-export const attachContracts = ({
+export const functionByContract = ({
   fn,
   preconditions,
   postconditions,
@@ -69,21 +65,18 @@ export const attachContracts = ({
   invariants: Condition[];
 }): Function | never => {
   let result = checkPreconditions([
-    [() => fn instanceof Function, { fn }, "First argument must be a function"],
+    [() => fn instanceof Function, "First argument must be a function"],
 
     [
       () => preconditions && preconditions instanceof Array,
-      { preconditions },
       "preconditions must be an array",
     ],
     [
       () => postconditions && postconditions instanceof Array,
-      { postconditions },
       "postconditions must be an array",
     ],
     [
       () => invariants && invariants instanceof Array,
-      { invariants },
       "invariants must be an array",
     ],
 
@@ -91,21 +84,18 @@ export const attachContracts = ({
       () =>
         preconditions instanceof Array &&
         !preconditions.find((x) => !(x instanceof Array)),
-      { preconditions },
       "preconditions must be an array of array",
     ],
     [
       () =>
         postconditions instanceof Array &&
         !postconditions.find((x) => !(x instanceof Array)),
-      { postconditions },
       "postconditions must be an array of array",
     ],
     [
       () =>
         invariants instanceof Array &&
         !invariants.find((x) => !(x instanceof Array)),
-      { invariants },
       "invariants must be an array of array",
     ],
 
@@ -113,21 +103,18 @@ export const attachContracts = ({
       () =>
         preconditions instanceof Array &&
         !preconditions.find((x) => typeof x[0] !== "function"),
-      { preconditions },
       "all preconditions have a function",
     ],
     [
       () =>
         postconditions instanceof Array &&
         !postconditions.find((x) => typeof x[0] !== "function"),
-      { postconditions },
       "all postconditions have a function",
     ],
     [
       () =>
         invariants instanceof Array &&
         !invariants.find((x) => typeof x[0] !== "function"),
-      { invariants },
       "all invariants have a function",
     ],
   ]);
@@ -179,4 +166,8 @@ export const attachContracts = ({
   // end main
 
   return proxy;
+};
+
+export default {
+  functionByContract,
 };
