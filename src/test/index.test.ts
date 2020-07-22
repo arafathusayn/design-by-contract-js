@@ -1,11 +1,11 @@
-import { attachContracts } from "../index";
+import { functionByContract } from "../index";
 
-describe("attachContracts -> Function", () => {
+describe("functionByContract -> Function", () => {
   test("takes a function as 1st arg otherwise returns an error with a specific message", () => {
     const fn = () => {};
 
     expect(
-      typeof attachContracts({
+      typeof functionByContract({
         fn,
         preconditions: [],
         postconditions: [],
@@ -14,7 +14,7 @@ describe("attachContracts -> Function", () => {
     ).toBe("function");
 
     expect(() =>
-      attachContracts({
+      functionByContract({
         // @ts-ignore
         fn: null,
         preconditions: [],
@@ -28,7 +28,7 @@ describe("attachContracts -> Function", () => {
     const fn = () => {};
 
     expect(() =>
-      attachContracts({
+      functionByContract({
         fn,
         // @ts-ignore
         preconditions: null,
@@ -38,7 +38,7 @@ describe("attachContracts -> Function", () => {
     ).toThrow("preconditions must be an array");
 
     expect(() =>
-      attachContracts({
+      functionByContract({
         fn,
         preconditions: [],
         // @ts-ignore
@@ -48,7 +48,7 @@ describe("attachContracts -> Function", () => {
     ).toThrow("postconditions must be an array");
 
     expect(() =>
-      attachContracts({
+      functionByContract({
         fn,
         preconditions: [],
         postconditions: [],
@@ -58,7 +58,7 @@ describe("attachContracts -> Function", () => {
     ).toThrow("invariants must be an array");
 
     expect(() =>
-      attachContracts({
+      functionByContract({
         fn,
         // @ts-ignore
         preconditions: [1],
@@ -68,7 +68,7 @@ describe("attachContracts -> Function", () => {
     ).toThrow("preconditions must be an array of array");
 
     expect(() =>
-      attachContracts({
+      functionByContract({
         fn,
         preconditions: [],
         // @ts-ignore
@@ -78,7 +78,7 @@ describe("attachContracts -> Function", () => {
     ).toThrow("postconditions must be an array of array");
 
     expect(() =>
-      attachContracts({
+      functionByContract({
         fn,
         preconditions: [],
         postconditions: [],
@@ -88,7 +88,7 @@ describe("attachContracts -> Function", () => {
     ).toThrow("invariants must be an array of array");
 
     expect(() =>
-      attachContracts({
+      functionByContract({
         fn,
         // @ts-ignore
         preconditions: [[null, {}]],
@@ -98,7 +98,7 @@ describe("attachContracts -> Function", () => {
     ).toThrow("all preconditions have a function");
 
     expect(() =>
-      attachContracts({
+      functionByContract({
         fn,
         preconditions: [],
         // @ts-ignore
@@ -108,7 +108,7 @@ describe("attachContracts -> Function", () => {
     ).toThrow("all postconditions have a function");
 
     expect(() =>
-      attachContracts({
+      functionByContract({
         fn,
         preconditions: [],
         postconditions: [],
@@ -124,17 +124,11 @@ describe("attachContracts -> Function", () => {
 
     const divide = () => num1 / num2;
 
-    const divideWithContracts = attachContracts({
+    const divideWithContracts = functionByContract({
       fn: divide,
-      preconditions: [[() => num2 !== 0, { num2 }, "cannot divide by zero"]],
+      preconditions: [[() => num2 !== 0, "cannot divide by zero"]],
       postconditions: [],
-      invariants: [
-        [
-          () => num1 === 10 && num2 === 0,
-          { num1, num2 },
-          "inputs are not same",
-        ],
-      ],
+      invariants: [[() => num1 === 10 && num2 === 0, "inputs are not same"]],
     });
 
     const result = divideWithContracts();
@@ -143,34 +137,22 @@ describe("attachContracts -> Function", () => {
 
     num2 = 10;
 
-    const divideWithContracts2 = attachContracts({
+    const divideWithContracts2 = functionByContract({
       fn: divide,
-      preconditions: [[() => num2 !== 0, { num2 }, "cannot divide by zero"]],
+      preconditions: [[() => num2 !== 0, "cannot divide by zero"]],
       postconditions: [],
-      invariants: [
-        [
-          () => num1 === 10 && num2 === 10,
-          { num1, num2 },
-          "inputs are not same",
-        ],
-      ],
+      invariants: [[() => num1 === 10 && num2 === 10, "inputs are not same"]],
     });
 
     const result2 = divideWithContracts2();
 
     expect(result2).toBe(1);
 
-    const divideWithContracts3 = attachContracts({
+    const divideWithContracts3 = functionByContract({
       fn: divide,
       preconditions: [],
       postconditions: [],
-      invariants: [
-        [
-          () => num1 === 10 && num2 === 0,
-          { num1, num2 },
-          "inputs are not same",
-        ],
-      ],
+      invariants: [[() => num1 === 10 && num2 === 0, "inputs are not same"]],
     });
 
     const result3 = divideWithContracts3();
@@ -180,20 +162,14 @@ describe("attachContracts -> Function", () => {
     num1 = 10;
     num2 = 10;
 
-    const divideWithContracts4 = attachContracts({
+    const divideWithContracts4 = functionByContract({
       fn: () => {
         num2 = 5;
         return num1 / num2;
       },
       preconditions: [],
       postconditions: [],
-      invariants: [
-        [
-          () => num1 === 10 && num2 === 10,
-          { num1, num2 },
-          "inputs are not same",
-        ],
-      ],
+      invariants: [[() => num1 === 10 && num2 === 10, "inputs are not same"]],
     });
 
     const result4 = divideWithContracts4();
@@ -203,17 +179,13 @@ describe("attachContracts -> Function", () => {
     num1 = 5;
     num2 = 5;
 
-    const divideWithContracts5 = attachContracts({
+    const divideWithContracts5 = functionByContract({
       fn: () => {
         num2 = 1;
         return num1 / num2;
       },
-      preconditions: [
-        [() => num1 === 5 && num2 === 5, { num1, num2 }, "inputs are not same"],
-      ],
-      postconditions: [
-        [() => num1 === 5 && num2 === 5, { num1, num2 }, "inputs are not same"],
-      ],
+      preconditions: [[() => num1 === 5 && num2 === 5, "inputs are not same"]],
+      postconditions: [[() => num1 === 5 && num2 === 5, "inputs are not same"]],
       invariants: [],
     });
 
@@ -226,14 +198,14 @@ describe("attachContracts -> Function", () => {
     let num1 = 10;
     let num2 = 10;
 
-    const divideWithContracts4 = attachContracts({
+    const divideWithContracts4 = functionByContract({
       fn: () => {
         num2 = 5;
         return num1 / num2;
       },
       preconditions: [],
       postconditions: [],
-      invariants: [[() => num1 === 10 && num2 === 10, { num1, num2 }]],
+      invariants: [[() => num1 === 10 && num2 === 10]],
     });
 
     const result4 = divideWithContracts4();
