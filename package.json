@@ -1,6 +1,6 @@
 {
   "name": "design-by-contract",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "apply 'design by contract' methodology to your javascript code",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
