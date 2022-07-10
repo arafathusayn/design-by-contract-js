@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc --declaration && npm run build:browser",
     "build:browser": "browserify -s designByContract src/index.ts -p [ tsify ] > dist/design-by-contract.js && terser --compress --mangle -o dist/design-by-contract.min.js dist/design-by-contract.js",
-    "test": "jest --config jestconfig.json --coverage"
+    "test": "jest --config jestconfig.json --coverage",
+    "test:watch": "jest --config jestconfig.json --coverage --watch"
   },
   "repository": {
     "type": "git",
@@ -23,12 +24,12 @@
   },
   "homepage": "https://github.com/arafathusayn/design-by-contract-js#readme",
   "devDependencies": {
-    "@types/jest": "^26.0.0",
-    "browserify": "^16.5.1",
-    "jest": "^26.0.1",
-    "terser": "^4.8.0",
-    "ts-jest": "^26.1.1",
-    "tsify": "^4.0.2",
-    "typescript": "^3.9.5"
+    "@types/jest": "^28.1.4",
+    "browserify": "^17.0.0",
+    "jest": "^28.1.2",
+    "terser": "^5.14.1",
+    "ts-jest": "^28.0.5",
+    "tsify": "^5.0.4",
+    "typescript": "^4.7.4"
   }
 }
