@@ -1,38 +1,5 @@
-A TS/JavaScript library to put runtime checks using 'design by contract' approach.
+import { functionByContract } from "../src";
 
-```
-npm i design-by-contract
-```
-
-## Usage
-
-```ts
-import { functionByContract } from "design-by-contract";
-
-try {
-  const thisMayThrowError =
-    functionByContract({
-      fn: () => { /* your function mutating outer scope */ },
-      preconditions: Precondition[];
-      postconditions: Postcondition[];
-      invariants: Invariant[];
-      async: boolean, // NOTE: must be set along with `asyncFnArgs` if your fn is async
-      asyncFnArgs: any[],
-    })
-} catch(e) {
-  // Clearly handle error
-  console.error(e);
-}
-```
-
-* `Precondition | Postcondition | Invariant` has type: `[ConditionFunction, string?]`.
-* `preconditions` are checked before the function executes
-* `postconditions` are checked after the function executes
-* `invariants` are checked both before and after the function executes
-
-## Basic Example
-
-```js
 let n1 = 1;
 let n2 = 2;
 let sum = 0;
@@ -83,4 +50,3 @@ try {
   // Error: n1 & n2 must not change
   console.error(error);
 }
-```
