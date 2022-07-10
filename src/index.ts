@@ -1,84 +1,48 @@
-type Condition = [() => boolean, any?];
-
 const checkContracts = (
-  conditions: Condition[],
+  conditions: Contract[],
   defaultErrorMessage: string,
-): (true | Error)[] => {
-  let results: (true | Error)[] = [];
+): void | never => {
+  for (const [condition, errorMessage] of conditions) {
+    const result = condition();
 
-  for (const condition of conditions) {
-    const result: boolean = condition[0]();
-
-    if (result === true) {
-      results.push(true);
-    } else {
-      results.push(new Error(condition[1] || defaultErrorMessage));
-
-      return results;
+    if (result === false) {
+      throw new Error(errorMessage || defaultErrorMessage);
     }
   }
-
-  return results;
 };
 
-const returnErrorIfExists = (
-  resultsWithErrors: (true | Error)[],
-): undefined | Error => {
-  for (const result of resultsWithErrors) {
-    if (result instanceof Error) {
-      return result;
-    }
-  }
-
-  return undefined;
+const checkInvariants = (conditions: Invariant[]) => {
+  checkContracts(conditions, "One of the invariants is violated.");
 };
 
-const checkInvariants = (conditions: Condition[]) =>
-  returnErrorIfExists(
-    checkContracts(conditions, "One of the invariants is violated."),
-  );
+const checkPreconditions = (conditions: Precondition[]) => {
+  checkContracts(conditions, "One of the preconditions is violated.");
+};
 
-const checkPreconditions = (conditions: Condition[]) =>
-  returnErrorIfExists(
-    checkContracts(conditions, "One of the preconditions is violated."),
-  );
-
-const checkPostconditions = (conditions: Condition[]) =>
-  returnErrorIfExists(
-    checkContracts(conditions, "One of the postconditions is violated."),
-  );
+const checkPostconditions = (conditions: Postcondition[]) => {
+  checkContracts(conditions, "One of the postconditions is violated.");
+};
 
 /**
- * @description Condition: [ConditionFunction, ErrorMessage?]
- * @description ConditionFunction: () => boolean - evaluated and checked to be true, e.g. `() => x === "foo" && y === "bar"`
- * @description ErrorMessage?: any - optional, e.g. `'x should not be anything other than "foo"'`
+ * @throws {Error} Throws if any of the passed properties is invalid, eg. Empty array `preconditions: []` for any contract
+ * @description `Precondition | Postcondition | Invariant` is of type: `[ConditionFunction, string?]`.\
+ * `preconditions` are checked before the function executes\
+ * `postconditions` are checked after the function executes\
+ * `invariants` are checked both before and after the function executes\
+ * `ConditionFunction: () => boolean` - evaluated and checked to be true, e.g. `() => x === "foo" && y === "bar"`\
+ * ErrorMessage?: string - optional, e.g. `'x should not be anything other than "foo"'`
  */
 export const functionByContract = ({
   fn,
   preconditions,
   postconditions,
   invariants,
-}: {
-  fn: Function;
-  preconditions: Condition[];
-  postconditions: Condition[];
-  invariants: Condition[];
-}): Function | never => {
-  let result = checkPreconditions([
-    [() => fn instanceof Function, "First argument must be a function"],
-
-    [
-      () => preconditions && preconditions instanceof Array,
-      "preconditions must be an array",
-    ],
-    [
-      () => postconditions && postconditions instanceof Array,
-      "postconditions must be an array",
-    ],
-    [
-      () => invariants && invariants instanceof Array,
-      "invariants must be an array",
-    ],
+  async: asyncFn,
+  asyncFnArgs,
+}: Params): Function | never => {
+  // This may throw
+  checkPreconditions([
+    [() => typeof fn === "function", "First argument must be a function"],
 
     [
       () =>
@@ -119,55 +83,75 @@ export const functionByContract = ({
     ],
   ]);
 
-  if (result instanceof Error) {
-    throw result;
-  }
+  const handler: ProxyHandler<typeof fn> = {
+    apply: (target, _thisArg, args) => {
+      // Throw if preconditions are violated
+      checkPreconditions(preconditions);
+      // Throw if invariants are violated before
+      checkInvariants(invariants);
 
-  const handler = {
-    apply: (fn: Function, _thisArg: any, args: any[]): any | void | Error => {
-      let result = checkPreconditions(preconditions);
+      const returnedValue = target(...args);
 
-      if (result instanceof Error) {
-        return result;
-      }
-
-      result = checkInvariants(invariants);
-
-      if (result instanceof Error) {
-        return result;
-      }
-
-      // main
-
-      const returnedValue = fn(...args);
-
-      // end main
-
-      result = checkInvariants(invariants);
-
-      if (result instanceof Error) {
-        return result;
-      }
-
-      result = checkPostconditions(postconditions);
-
-      if (result instanceof Error) {
-        return result;
-      }
+      // Throw if invariants are violated after
+      checkInvariants(invariants);
+      // Throw if postconditions are violated
+      checkPostconditions(postconditions);
 
       return returnedValue;
     },
   };
 
-  // main
+  if (!asyncFn) {
+    const proxy = new Proxy(fn, handler);
+    return proxy;
+  }
 
-  const proxy = new Proxy(fn, handler);
+  return () =>
+    new Promise(async (resolve, reject) => {
+      // Throw if preconditions are violated
+      checkPreconditions(preconditions);
+      // Throw if invariants are violated before
+      checkInvariants(invariants);
 
-  // end main
+      let returnedValue;
 
-  return proxy;
+      try {
+        returnedValue =
+          asyncFnArgs instanceof Array ? await fn(...asyncFnArgs) : await fn();
+
+        // Throw if invariants are violated after
+        checkInvariants(invariants);
+        // Throw if postconditions are violated
+        checkPostconditions(postconditions);
+
+        resolve(returnedValue);
+      } catch (error) {
+        reject(error);
+      }
+    });
 };
 
 export default {
   functionByContract,
 };
+
+type ConditionFunction = () => boolean;
+type ErrorMessage = string;
+type Contract = [ConditionFunction, ErrorMessage?];
+type Precondition = Contract;
+type Postcondition = Contract;
+type Invariant = Contract;
+
+type Params =
+  | ({
+      fn: Function;
+      preconditions: Precondition[];
+      postconditions: Postcondition[];
+      invariants: Invariant[];
+    } & { async: boolean; asyncFnArgs: any[] })
+  | ({
+      fn: Function;
+      preconditions: Precondition[];
+      postconditions: Postcondition[];
+      invariants: Invariant[];
+    } & { async?: never; asyncFnArgs?: never });
