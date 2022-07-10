@@ -1,51 +1,45 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.functionByContract = void 0;
 const checkContracts = (conditions, defaultErrorMessage) => {
-    let results = [];
-    for (const condition of conditions) {
-        const result = condition[0]();
-        if (result === true) {
-            results.push(true);
-        }
-        else {
-            results.push(new Error(condition[1] || defaultErrorMessage));
-            return results;
+    for (const [condition, errorMessage] of conditions) {
+        const result = condition();
+        if (result === false) {
+            throw new Error(errorMessage || defaultErrorMessage);
         }
     }
-    return results;
 };
-const returnErrorIfExists = (resultsWithErrors) => {
-    for (const result of resultsWithErrors) {
-        if (result instanceof Error) {
-            return result;
-        }
-    }
-    return undefined;
+const checkInvariants = (conditions) => {
+    checkContracts(conditions, "One of the invariants is violated.");
 };
-const checkInvariants = (conditions) => returnErrorIfExists(checkContracts(conditions, "One of the invariants is violated."));
-const checkPreconditions = (conditions) => returnErrorIfExists(checkContracts(conditions, "One of the preconditions is violated."));
-const checkPostconditions = (conditions) => returnErrorIfExists(checkContracts(conditions, "One of the postconditions is violated."));
+const checkPreconditions = (conditions) => {
+    checkContracts(conditions, "One of the preconditions is violated.");
+};
+const checkPostconditions = (conditions) => {
+    checkContracts(conditions, "One of the postconditions is violated.");
+};
 /**
- * @description Condition: [ConditionFunction, ErrorMessage?]
- * @description ConditionFunction: () => boolean - evaluated and checked to be true, e.g. `() => x === "foo" && y === "bar"`
- * @description ErrorMessage?: any - optional, e.g. `'x should not be anything other than "foo"'`
+ * @throws {Error} Throws if any of the passed properties is invalid, eg. Empty array `preconditions: []` for any contract
+ * @description `Precondition | Postcondition | Invariant` is of type: `[ConditionFunction, string?]`.\
+ * `preconditions` are checked before the function executes\
+ * `postconditions` are checked after the function executes\
+ * `invariants` are checked both before and after the function executes\
+ * `ConditionFunction: () => boolean` - evaluated and checked to be true, e.g. `() => x === "foo" && y === "bar"`\
+ * ErrorMessage?: string - optional, e.g. `'x should not be anything other than "foo"'`
  */
-exports.functionByContract = ({ fn, preconditions, postconditions, invariants, }) => {
-    let result = checkPreconditions([
-        [() => fn instanceof Function, "First argument must be a function"],
-        [
-            () => preconditions && preconditions instanceof Array,
-            "preconditions must be an array",
-        ],
-        [
-            () => postconditions && postconditions instanceof Array,
-            "postconditions must be an array",
-        ],
-        [
-            () => invariants && invariants instanceof Array,
-            "invariants must be an array",
-        ],
+const functionByContract = ({ fn, preconditions, postconditions, invariants, async: asyncFn, asyncFnArgs, }) => {
+    // This may throw
+    checkPreconditions([
+        [() => typeof fn === "function", "First argument must be a function"],
         [
             () => preconditions instanceof Array &&
                 !preconditions.find((x) => !(x instanceof Array)),
@@ -77,38 +71,45 @@ exports.functionByContract = ({ fn, preconditions, postconditions, invariants, }
             "all invariants have a function",
         ],
     ]);
-    if (result instanceof Error) {
-        throw result;
-    }
     const handler = {
-        apply: (fn, _thisArg, args) => {
-            let result = checkPreconditions(preconditions);
-            if (result instanceof Error) {
-                return result;
-            }
-            result = checkInvariants(invariants);
-            if (result instanceof Error) {
-                return result;
-            }
-            // main
-            const returnedValue = fn(...args);
-            // end main
-            result = checkInvariants(invariants);
-            if (result instanceof Error) {
-                return result;
-            }
-            result = checkPostconditions(postconditions);
-            if (result instanceof Error) {
-                return result;
-            }
+        apply: (target, _thisArg, args) => {
+            // Throw if preconditions are violated
+            checkPreconditions(preconditions);
+            // Throw if invariants are violated before
+            checkInvariants(invariants);
+            const returnedValue = target(...args);
+            // Throw if invariants are violated after
+            checkInvariants(invariants);
+            // Throw if postconditions are violated
+            checkPostconditions(postconditions);
             return returnedValue;
         },
     };
-    // main
-    const proxy = new Proxy(fn, handler);
-    // end main
-    return proxy;
+    if (!asyncFn) {
+        const proxy = new Proxy(fn, handler);
+        return proxy;
+    }
+    return () => new Promise((resolve, reject) => __awaiter(void 0, void 0, void 0, function* () {
+        // Throw if preconditions are violated
+        checkPreconditions(preconditions);
+        // Throw if invariants are violated before
+        checkInvariants(invariants);
+        let returnedValue;
+        try {
+            returnedValue =
+                asyncFnArgs instanceof Array ? yield fn(...asyncFnArgs) : yield fn();
+            // Throw if invariants are violated after
+            checkInvariants(invariants);
+            // Throw if postconditions are violated
+            checkPostconditions(postconditions);
+            resolve(returnedValue);
+        }
+        catch (error) {
+            reject(error);
+        }
+    }));
 };
+exports.functionByContract = functionByContract;
 exports.default = {
     functionByContract: exports.functionByContract,
 };
