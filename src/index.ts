@@ -108,15 +108,13 @@ export const functionByContract = ({
 
   return () =>
     new Promise(async (resolve, reject) => {
-      // Throw if preconditions are violated
-      checkPreconditions(preconditions);
-      // Throw if invariants are violated before
-      checkInvariants(invariants);
-
-      let returnedValue;
-
       try {
-        returnedValue =
+        // Throw if preconditions are violated
+        checkPreconditions(preconditions);
+        // Throw if invariants are violated before
+        checkInvariants(invariants);
+
+        const returnedValue =
           asyncFnArgs instanceof Array ? await fn(...asyncFnArgs) : await fn();
 
         // Throw if invariants are violated after
