@@ -91,14 +91,12 @@ const functionByContract = ({ fn, preconditions, postconditions, invariants, asy
         return proxy;
     }
     return () => new Promise((resolve, reject) => __awaiter(void 0, void 0, void 0, function* () {
-        // Throw if preconditions are violated
-        checkPreconditions(preconditions);
-        // Throw if invariants are violated before
-        checkInvariants(invariants);
-        let returnedValue;
         try {
-            returnedValue =
-                asyncFnArgs instanceof Array ? yield fn(...asyncFnArgs) : yield fn();
+            // Throw if preconditions are violated
+            checkPreconditions(preconditions);
+            // Throw if invariants are violated before
+            checkInvariants(invariants);
+            const returnedValue = asyncFnArgs instanceof Array ? yield fn(...asyncFnArgs) : yield fn();
             // Throw if invariants are violated after
             checkInvariants(invariants);
             // Throw if postconditions are violated
